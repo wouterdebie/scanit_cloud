@@ -23,3 +23,7 @@ gcloud functions deploy scanit --runtime python37 \
 --trigger-event google.storage.object.finalize \
 --timeout 540
 ```
+
+## Acknowledgements
+To Konstantin Baierer for gcv2hocr.py
+
