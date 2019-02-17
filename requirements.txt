@@ -1,0 +1,7 @@
+google-cloud-storage
+google-cloud-vision
+pillow
+reportlab
+lxml
+PyDrive
+python-dateutil
