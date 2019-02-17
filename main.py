@@ -139,7 +139,7 @@ def _utc_to_local(t):
     to_zone = tz.gettz('America/New_York')
     utc = datetime.datetime.fromtimestamp(int(t))
     utc = utc.replace(tzinfo=from_zone)
-    utc.astimezone(to_zone)
+    return utc.astimezone(to_zone)
 
 
 def _store(scanit_path, ext, contents):
