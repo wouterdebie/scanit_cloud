@@ -3,7 +3,9 @@
 import sys
 import json
 import argparse
+import html
 from string import Template
+
 
 class GCVAnnotation:
 
@@ -67,6 +69,7 @@ class GCVAnnotation:
         return "<%s [%s %s %s %s]>%s</%s>" % (self.ocr_class, self.x0, self.y0,
                                               self.x1, self.y1, self.content,
                                               self.ocr_class)
+
     def render(self):
         if type(self.content) == type([]):
             content = "".join(map(lambda x: x.render(), self.content))
@@ -74,12 +77,14 @@ class GCVAnnotation:
             content = self.content
         return self.__class__.templates[self.ocr_class].substitute(self.__dict__, content=content)
 
+
 def fromResponse(resp, baseline_tolerance=2, **kwargs):
     last_baseline = -100
     page = None
     curline = None
     if isinstance(resp, bool) and not resp:
-        box = [{"x": 0, "y": 0}, {"x": 0, "y": 0}, {"x": 0, "y": 0}, {"x": 0, "y": 0}]
+        box = [{"x": 0, "y": 0}, {"x": 0, "y": 0},
+               {"x": 0, "y": 0}, {"x": 0, "y": 0}]
         page = GCVAnnotation(
             ocr_class='ocr_page',
             htmlid='page_0',
@@ -95,25 +100,31 @@ def fromResponse(resp, baseline_tolerance=2, **kwargs):
                     htmlid='page_0',
                     box=box,
                     **kwargs
-                    )
+                )
                 continue
-            word = GCVAnnotation(ocr_class='ocrx_word', content=anno_json['description'], box=box)
-            #if word.y1-abs(last_baseline) > baseline_tolerance:
+            description = html.escape(anno_json['description'])
+            word = GCVAnnotation(ocr_class='ocrx_word',
+                                 content=description, box=box)
+            # if word.y1-abs(last_baseline) > baseline_tolerance:
             curline = GCVAnnotation(
-                    ocr_class='ocr_line',
-                    htmlid="line_%d" % (len(page.content)),
-                    content=[],
-                    box=box)
+                ocr_class='ocr_line',
+                htmlid="line_%d" % (len(page.content)),
+                content=[],
+                box=box)
             page.content.append(curline)
             last_baseline = word.y1
-            word.htmlid="word_%d_%d" % (len(page.content) - 1, len(curline.content))
+            word.htmlid = "word_%d_%d" % (
+                len(page.content) - 1, len(curline.content))
             curline.content.append(word)
         for line in page.content:
             line.maximize_bbox()
         page.maximize_bbox()
-    if not page.page_width: page.page_width = page.x1
-    if not page.page_height: page.page_height = page.y1
+    if not page.page_width:
+        page.page_width = page.x1
+    if not page.page_height:
+        page.page_height = page.y1
     return page
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -156,13 +167,15 @@ if __name__ == '__main__':
 
     instream = sys.stdin if args.gcv_file is '-' else open(args.gcv_file, 'r')
     resp = json.load(instream)
-    resp = resp['responses'][0] if 'responses' in resp and len(resp['responses']) >= 0 and "textAnnotations" in resp['responses'][0] else False
+    resp = resp['responses'][0] if 'responses' in resp and len(
+        resp['responses']) >= 0 and "textAnnotations" in resp['responses'][0] else False
     del(args.gcv_file)
     page = fromResponse(resp, **args.__dict__)
 
     if args.savefile:
         with (open(args.savefile, 'w', encoding="utf-8") if str == bytes else open(args.savefile, 'w')) as outfile:
-            outfile.write(page.render().encode('utf-8') if str == bytes else page.render())
+            outfile.write(page.render().encode('utf-8')
+                          if str == bytes else page.render())
             outfile.close()
     else:
         if str == bytes:

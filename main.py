@@ -5,6 +5,7 @@ import json
 import gcv2hocr
 import datetime
 import pytz
+import time
 from PIL import Image
 from shutil import copyfile
 from dateutil import tz
@@ -82,12 +83,21 @@ def scanit(data, context):
         else:
             contents = gcv2hocr.fromResponse(False).render()
 
+        # # A race condition might happen here where between the creation
+        # # and the _all_complete() call all hocr files have arrived.
+        # # This causes multiple PDFS to be generated and uploaded.
+        # # Since we don't have any synchornization mechanisms for cloud functions
+        # # we wait here a little bit (nr-1 seconds)
+        # logging.debug(f"Waiting {s.nr - 1} seconds before upload")
+        # time.sleep(s.nr - 1)
         _store(s, "hocr", contents)
 
     if fn.endswith("hocr"):
         s = ScanitPath.from_fn(bucket, fn)
         ext = "hocr"
+
         if _all_complete(s, "hocr"):
+
             logging.debug(f"{s.full_path(ext)} completes the set.")
             hocrs = []
             owners = set()
@@ -101,6 +111,7 @@ def scanit(data, context):
                 hocrs.append(f.download_as_string().decode("utf-8"))
 
             logging.debug(f"All owners: {owners}")
+
             logging.debug(f"Creating {len(jpgs)} page PDF")
             pdf = export_pdf(jpgs, hocrs, title="TEST")
 
